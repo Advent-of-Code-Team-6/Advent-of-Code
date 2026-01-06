@@ -84,10 +84,7 @@ def solve_part_1(path: str, k_connections: int = 1000) -> int:
     if n == 0:
         return 0
 
-    max_pairs = n * (n - 1) // 2
-    k = min(k_connections, max_pairs)
-
-    edges = k_smallest_pairs(points, k)
+    edges = k_smallest_pairs(points, k_connections)
 
     dsu = DSU(n)
     for _, i, j in edges:
@@ -104,5 +101,70 @@ def solve_part_1(path: str, k_connections: int = 1000) -> int:
 
     return top_sizes[0] * top_sizes[1] * top_sizes[2]
 
+
+'''
+We are building a Minimum Spanning Tree (MST) using Prim's algorithm 
+on the complete graph with squared Euclidean distance.
+'''
+def solve_part_2(path: str) -> int:
+    points = read_points(path)
+    n = len(points)
+    if n < 2:
+        return 0
+
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    zs = [p[2] for p in points]
+
+    INF = 10**30 # Just a large number to init the distance
+    in_tree = [False] * n
+    best_dist = [INF] * n
+    parent = [-1] * n
+
+    best_dist[0] = 0
+
+    max_edge_dist = -1
+    max_edge_u = -1
+    max_edge_v = -1
+
+    for _ in range(n):
+        # pick the not-in-tree node with smallest best_dist
+        u = -1
+        u_dist = INF
+        for i in range(n):
+            if not in_tree[i] and best_dist[i] < u_dist:
+                u_dist = best_dist[i]
+                u = i
+
+        in_tree[u] = True
+
+        # Keeping track of the largest distance, which will be the last 
+        # node that we will connect
+        if parent[u] != -1 and u_dist > max_edge_dist:
+            max_edge_dist = u_dist
+            max_edge_u = u
+            max_edge_v = parent[u]
+
+        # update best_dist for all remaining nodes
+        xu, yu, zu = xs[u], ys[u], zs[u]
+        for v in range(n):
+            if in_tree[v]:
+                continue
+            dx = xu - xs[v]
+            dy = yu - ys[v]
+            dz = zu - zs[v]
+            d2 = dx*dx + dy*dy + dz*dz  # squared distance
+            if d2 < best_dist[v]:
+                best_dist[v] = d2
+                parent[v] = u
+
+    return xs[max_edge_u] * xs[max_edge_v]
+
+
 if __name__ == "__main__":
-    print(solve_part_1("input.txt", k_connections=1000))
+    print("Solving day 8!")
+    print("Solution for part 1: ", solve_part_1("input.txt", k_connections=1000))
+    print("Solution for part 2: ", solve_part_2("input.txt"))
+
+
+
