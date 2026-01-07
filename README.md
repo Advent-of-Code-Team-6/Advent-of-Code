@@ -7,4 +7,4 @@
 This repository belongs to:
   - Athanasios Tsarapatsanis
   - Murtaza Haidari
-  - Gediminas Marc
+  - Gediminas Marcinkevicius
