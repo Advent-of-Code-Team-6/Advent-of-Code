@@ -100,7 +100,7 @@ def count_paths_with_requirements(graph, current_node, dac_visited, fft_visited,
 
 
 # Main execution
-graph = parse_input('input11.txt')
+graph = parse_input('input.txt')
 
 result_pt1 = count_paths(graph, 'you')
 result_pt2 = count_paths_with_requirements(graph, 'svr', False, False)
