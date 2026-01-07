@@ -59,8 +59,74 @@ def solve_part_1(grid: list[list[str]]) -> int:
 
     return splits
 
+def solve_part_2(grid: list[list[str]]) -> int:
+    H = len(grid)
+    if H == 0:
+        return 0
+
+    # Use 'S' as the single source of the initial state.
+    sr = sc = None
+    for r in range(H):
+        for c, ch in enumerate(grid[r]):
+            if ch == "S":
+                sr, sc = r, c
+                break
+        if sr is not None:
+            break
+    if sr is None:
+        raise ValueError("No 'S' found in grid")
+
+    def in_bounds(r: int, c: int) -> bool:
+        # Support ragged grids by checking row-specific width.
+        return 0 <= r < H and 0 <= c < len(grid[r])
+
+    # Precompute the next splitter per cell to avoid repeated downward scans.
+    next_split = [[None] * len(grid[r]) for r in range(H)]
+
+    # Bottom-up fill lets each cell reuse the information from the cell below.
+    for r in range(H - 1, -1, -1):
+        for c in range(len(grid[r])):
+            if grid[r][c] == "^":
+                next_split[r][c] = r
+            else:
+                if r + 1 < H and c < len(grid[r + 1]):
+                    next_split[r][c] = next_split[r + 1][c]
+                else:
+                    next_split[r][c] = None
+
+    memo = {}
+    visiting = set()  # Defensive cycle detection to avoid infinite recursion on invalid inputs.
+
+    def ways(r: int, c: int) -> int:
+        # Leaving the grid corresponds to one completed timeline.
+        if not in_bounds(r, c):
+            return 1
+
+        key = (r, c)
+        if key in memo:
+            return memo[key]
+
+        if key in visiting:
+            raise ValueError("Cycle detected (would create infinite timelines).")
+
+        visiting.add(key)
+
+        s = next_split[r][c]
+        if s is None:
+            ans = 1
+        else:
+            ans = ways(s, c - 1) + ways(s, c + 1)
+
+        visiting.remove(key)
+        memo[key] = ans
+        return ans
+
+    # Start immediately below 'S' to match the puzzle's initial beam direction.
+    return ways(sr + 1, sc)
+
 if __name__ == "__main__":
     # Keep I/O separate from logic so functions remain testable.
     grid = read_grid("input.txt")
     print(solve_part_1(grid))
+    print(solve_part_2(grid))
 
