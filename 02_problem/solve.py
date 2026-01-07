@@ -1,7 +1,7 @@
-# Converting the input_day_2.txt from ranges seperated by commas, i.e. 123-987,...
+# Converting the input.txt from ranges seperated by commas, i.e. 123-987,...
 # to a list of tuples, i.e. ranges = [(123,987),...]
 
-with open('input_day_2.txt', 'r') as f:
+with open('input.txt', 'r') as f:
     input = f.read().strip()
 
 ranges = [tuple(map(int, r.split('-'))) for r in input.split(',')]
