@@ -1,105 +1,50 @@
-import heapq
+import numpy as np
+from scipy.spatial.distance import pdist
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
+import re
 
-# Implementing Union-Find data structure to represent the groups of circuits,
-# because the main operations needed are merge and find.
-class DSU:
-    def __init__(self, n: int):
-        self.parent = list(range(n))
-        self.size = [1] * n
+def read_points(filename: str) -> list[tuple[int, int, int]]:
+    with open(filename, 'r') as f:
+        raw_data = re.findall(r'(\d+),(\d+),(\d+)', f.read())
+    return raw_data
 
-    def find(self, a: int) -> int:
-        while self.parent[a] != a:
-            self.parent[a] = self.parent[self.parent[a]]
-            a = self.parent[a]
-        return a
+def solve_part_1(filename='input.txt'):
+    data = read_points(filename)
+    points = np.array(data, dtype=np.int32)
 
-    def union(self, a: int, b: int) -> bool:
-        ra = self.find(a)
-        rb = self.find(b)
-        if ra == rb:
-            return False
-        # Connect the smaller tree/circuit to the bigger one
-        # to make search faster
-        if self.size[ra] < self.size[rb]:
-            ra, rb = rb, ra
-        self.parent[rb] = ra
-        self.size[ra] += self.size[rb]
-        return True
-
-# save input-file as a list
-def read_points(path: str) -> list[tuple[int, int, int]]:
-    pts = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            s = line.strip()
-            if not s:
-                continue
-            x_str, y_str, z_str = s.split(",")
-            pts.append((int(x_str), int(y_str), int(z_str)))
-    return pts
-
-def k_smallest_pairs(points: list[tuple[int, int, int]], k: int):
+    # Safety check, input should'nt be over 1000 lines
+    if len(points) > 1000: points = points[:1000]
     n = len(points)
-    if n < 2:
-        return []
 
-    # We limit the amounts of lookups to save memory usage
-    heap = []
-    heappush = heapq.heappush
-    heapreplace = heapq.heapreplace
+    # Using dist^2 to avoid computing the square-root, doesn't affect the result
+    dists = pdist(points, 'sqeuclidean')
 
-    xs = [p[0] for p in points]
-    ys = [p[1] for p in points]
-    zs = [p[2] for p in points]
+    # Select only the 1000 smallest entries
+    k = 1000
+    closest_indices = np.argpartition(dists, k)[:k]
 
-    # scan all pairs
-    for i in range(n - 1):
-        xi, yi, zi = xs[i], ys[i], zs[i]
-        for j in range(i + 1, n):
-            dx = xi - xs[j]
-            dy = yi - ys[j]
-            dz = zi - zs[j]
-            # using distance^2, to avoid square-root computations
-            dist2 = dx*dx + dy*dy + dz*dz
+    # Map condensed indices (from pdist output) back to endpoint pairs (i, j)
+    I, J = np.triu_indices(n, 1)   # all (i,j) from upper triangle-matrix
+    i = I[closest_indices]
+    j = J[closest_indices]
 
-            '''
-            heapq is a min-heap, so we have quick access to the smallest element.
-            However we need quick access to the largest element, to check the largest distance.
-            To achieve this we negate the heap.
-            '''
-            if len(heap) < k:
-                heappush(heap, (-dist2, i, j))
-            else:
-                if dist2 < -heap[0][0]:
-                    heapreplace(heap, (-dist2, i, j))
 
-    # convert back to positive dist2 and sort ascending
-    out = [(-d2, i, j) for (d2, i, j) in heap]
-    out.sort(key=lambda t: t[0])
-    return out
+    rows = np.concatenate([i, j])
+    cols = np.concatenate([j, i])
+    # Marking the existance of edges
+    data = np.ones(len(rows), dtype=np.bool_) # Bool uses less memory
+    graph = coo_matrix((data, (rows, cols)), shape=(n, n))
 
-def solve_part_1(path: str, k_connections: int = 1000) -> int:
-    points = read_points(path)
-    n = len(points)
-    if n == 0:
-        return 0
+    # Assigning nodes to their circuits/group
+    _, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
+    _, counts = np.unique(labels, return_counts=True)
 
-    edges = k_smallest_pairs(points, k_connections)
+    top3 = np.sort(counts)[::-1][:3]
 
-    dsu = DSU(n)
-    for _, i, j in edges:
-        dsu.union(i, j)
+    if len(top3) < 3: top3 = np.pad(top3, (0, 3-len(top3)), constant_values=1)
 
-    comp_sizes = {}
-    for i in range(n):
-        r = dsu.find(i)
-        comp_sizes[r] = comp_sizes.get(r, 0) + 1
-
-    top_sizes = sorted(comp_sizes.values(), reverse=True)[:3]
-    while len(top_sizes) < 3:
-        top_sizes.append(1)
-
-    return top_sizes[0] * top_sizes[1] * top_sizes[2]
+    return np.prod(top3)
 
 
 '''
@@ -107,7 +52,11 @@ We are building a Minimum Spanning Tree (MST) using Prim's algorithm
 on the complete graph with squared Euclidean distance.
 '''
 def solve_part_2(path: str) -> int:
-    points = read_points(path)
+    raw_points = read_points(path)
+
+    # This is due to recent changes in the read-function
+    points = [(int(x), int(y), int(z)) for (x, y, z) in raw_points]
+
     n = len(points)
     if n < 2:
         return 0
@@ -163,7 +112,7 @@ def solve_part_2(path: str) -> int:
 
 if __name__ == "__main__":
     print("Solving day 8!")
-    print("Solution for part 1: ", solve_part_1("input.txt", k_connections=1000))
+    print("Solution for part 1: ", solve_part_1())
     print("Solution for part 2: ", solve_part_2("input.txt"))
 
 
