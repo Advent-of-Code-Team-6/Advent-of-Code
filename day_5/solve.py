@@ -1,10 +1,10 @@
-# Converting the input_day_5.txt from 
+# Converting the input.txt from 
 # ranges seperated by newlines, i.e. 123-987\n ...
 # and (seperated by an empty line)
 # numbers seperated by newlines, i.e. 234\n ...
 # to a list of tuples, i.e. ranges = [(123,987),...], and list of numbers, i.e. numbers = [234,...]
 
-input_text = open('input_day_5.txt').read()
+input_text = open('input.txt').read()
 
 def parse_input(input_text):
     # Convert text file lines into list of strings
